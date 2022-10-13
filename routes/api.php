@@ -23,6 +23,12 @@ Route::group(['middleware'=>['api','password']],static function(){
 
     Route::group(['prefix'=>'admin'],static function(){
         Route::post('register',[AdminController::class,'register']);
+        Route::post('login',[AdminController::class,'login']);
+        Route::group(['middleware'=>['auth:sanctum','abilities:admin']],static function(){
+            Route::post('logout',[AdminController::class,'logout']);
+            Route::post('info',[AdminController::class,'info']);
+        });
+
     });
 
     Route::group(['prefix'=>'user'],static function(){
