@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\Auth\Admin;
+use App\Models\Auth\User;
+use App\Rules\MatchPassword;
+use App\Traits\GeneralTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -13,13 +15,17 @@ use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
-    public function register(Request $request)
+
+    use GeneralTrait;
+
+    public function register(Request $request): JsonResponse
     {
         $rules = [
-            'username'=>['required','min:6','string'],
-            'email'=>['required','email','unique:admins,email'],
-            'phone'=>['numeric','required','min:10','max:10'],
-            'password'=>['required','conformed',Password::min(6)->letters()->mixedCase()->symbols()->numbers()->uncompromised()],
+            'f_name'=>['required','min:3','string'],
+            'l_name'=>['required','min:3','string'],
+            'email'=>['required','email','unique:deliveries,email'],
+            'phone'=>['required','integer','digits:10'],
+            'password'=>['required','confirmed',Password::min(6)->letters()->mixedCase()->symbols()->numbers()->uncompromised()],
         ];
         try {
             $validator = Validator::make($request->all(),$rules);
@@ -27,14 +33,16 @@ class UserController extends Controller
             {
                 return $this->returnValidationError($validator);
             }
-            $admin = Admin::create([
-                'username'=>$request->username,
+            $user = User::create([
+                'f_name'=>$request->f_name,
+                'l_name'=>$request->l_name,
                 'email'=>$request->email,
+                'phone'=>$request->phone,
                 'password'=>Hash::make($request->password),
             ]);
-            $token = $admin->createToken('admin_token',['admin'])->plainTextToken;
-            $admin['token'] = $token;
-            return $this->returnData('admin',$admin,'new admin registered successfully. ');
+            $token = $user->createToken('user_token',['user'])->plainTextToken;
+            $delivery['token'] = $token;
+            return $this->returnData('user',$delivery,'new user registered successfully. ');
         }catch (\Exception $e)
         {
             return $this->returnError($e->getMessage(),$e->getCode());
@@ -45,7 +53,7 @@ class UserController extends Controller
     public function login(Request $request): JsonResponse
     {
         $rules = [
-            'email'=>['required','email','exists:admins,email'],
+            'email'=>['required','email','exists:users,email'],
             'password'=>['required'],
         ];
         try {
@@ -55,13 +63,13 @@ class UserController extends Controller
                 return $this->returnValidationError($validator);
             }
             $credentials=$request->only(['email','password']);
-            if(!Auth::guard('admin')->attempt($credentials))
+            if(!Auth::guard('user')->attempt($credentials))
             {
                 return $this->returnError('email or password is wrong');
             }
-            $admin = Auth::guard('admin')->user();
-            $token = $admin->createToken('admin_token',['admin'])->plainTextToken;
-            return $this->returnData('token',$token,'admin logged in successfully. ');
+            $user = Auth::guard('user')->user();
+            $token = $user->createToken('user_token',['user'])->plainTextToken;
+            return $this->returnData('token',$token,'user logged in successfully. ');
         }catch (\Exception $e)
         {
             return $this->returnError($e->getMessage(),$e->getCode());
@@ -73,8 +81,8 @@ class UserController extends Controller
     {
         try {
 
-            $admin = Auth::user();
-            return $this->returnData('admin',$admin);
+            $user = Auth::user();
+            return $this->returnData('user',$user);
         }catch (\Exception $e)
         {
             return $this->returnError($e->getMessage(),$e->getCode());
@@ -85,8 +93,10 @@ class UserController extends Controller
     public function update(Request $request): JsonResponse
     {
         $rules = [
-            'username'=>['min:6','string'],
-            'email'=>['email','unique:admins,email'],
+            'f_name'=>['min:3','string'],
+            'l_name'=>['min:3','string'],
+            'email'=>['email','unique:users,email'],
+            'phone'=>['numeric','min:10','max:10']
         ];
         try {
             $validator = Validator::make($request->all(),$rules);
@@ -95,17 +105,25 @@ class UserController extends Controller
                 return $this->returnValidationError($validator);
             }
             $data = [];
-            $admin = Auth::user();
-            if(isset($request->username))
+            $user = Auth::user();
+            if(isset($request->f_name))
             {
-                $data['username'] = $request->username;
+                $data['f_name'] = $request->f_name;
+            }
+            if(isset($request->l_name))
+            {
+                $data['l_name'] = $request->l_name;
             }
             if(isset($request->email))
             {
                 $data['email'] = $request->email;
             }
-            $admin->update($data);
-            return $this->returnData('admin',$admin);
+            if(isset($request->phone))
+            {
+                $data['phone'] = $request->phone;
+            }
+            $user->update($data);
+            return $this->returnData('user',$user);
 
         }catch (\Exception $e)
         {
@@ -117,7 +135,7 @@ class UserController extends Controller
     public function changePassword(Request $request): JsonResponse
     {
         $rules = [
-            'old_password'=>['required'],
+            'old_password'=>['required',new MatchPassword],
             'new_password'=>['required','confirmed',Password::min(6)->letters()->mixedCase()->symbols()->numbers()->uncompromised()],
         ];
         try {
@@ -126,12 +144,8 @@ class UserController extends Controller
             {
                 return $this->returnValidationError($validator);
             }
-            $admin = Auth::user();
-            if(!Hash::check($request->old_password,$admin->password))
-            {
-                return $this->returnError('password is wrong. ');
-            }
-            $admin->update([
+            $user = Auth::user();
+            $user->update([
                 'password'=>Hash::make($request->new_password)
             ]);
             return $this->returnSuccessMessage('password changed successfully. ');
@@ -145,9 +159,9 @@ class UserController extends Controller
     public function logout(): JsonResponse
     {
         try {
-            $admin = Auth::user();
-            $admin->tokens()->delete();
-            return $this->returnSuccessMessage('admin logged out successfully. ');
+            $user = Auth::user();
+            $user->tokens()->delete();
+            return $this->returnSuccessMessage('user logged out successfully. ');
         }catch (\Exception $e)
         {
             return $this->returnError($e->getMessage(),$e->getCode());

@@ -145,10 +145,6 @@ class DeliveryController extends Controller
                 return $this->returnValidationError($validator);
             }
             $delivery = Auth::user();
-//            if(!Hash::check($request->old_password,$delivery->password))
-//            {
-//                return $this->returnError('password is wrong. ');
-//            }
             $delivery->update([
                 'password'=>Hash::make($request->new_password)
             ]);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\Auth\Admin;
+use App\Rules\MatchPassword;
 use App\Traits\GeneralTrait;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -119,7 +120,7 @@ class AdminController extends Controller
     public function changePassword(Request $request): JsonResponse
     {
         $rules = [
-            'old_password'=>['required','current_password:admin'],
+            'old_password'=>['required',new MatchPassword],
             'new_password'=>['required','confirmed',Password::min(6)->letters()->mixedCase()->symbols()->numbers()->uncompromised()],
         ];
         try {
@@ -129,10 +130,6 @@ class AdminController extends Controller
                 return $this->returnValidationError($validator);
             }
             $admin = Auth::user();
-//            if(!Hash::check($request->old_password,$admin->password))
-//            {
-//                return $this->returnError('password is wrong. ');
-//            }
             $admin->update([
                 'password'=>Hash::make($request->new_password)
             ]);
