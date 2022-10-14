@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Auth\AdminController;
+use App\Http\Controllers\Auth\DeliveryController;
+use App\Http\Controllers\Auth\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -34,11 +36,26 @@ Route::group(['middleware'=>['api','password']],static function(){
     });
 
     Route::group(['prefix'=>'user'],static function(){
+        Route::post('register',[UserController::class,'register']);
+        Route::post('login',[UserController::class,'login']);
+        Route::group(['middleware'=>['auth:sanctum','abilities:user']],static function(){
+            Route::post('update',[UserController::class,'update']);
+            Route::post('change_password',[UserController::class,'changePassword']);
+            Route::post('logout',[UserController::class,'logout']);
+            Route::post('info',[UserController::class,'info']);
+        });
 
     });
 
     Route::group(['prefix'=>'delivery'],static function(){
-
+        Route::post('register',[DeliveryController::class,'register']);
+        Route::post('login',[DeliveryController::class,'login']);
+        Route::group(['middleware'=>['auth:sanctum','abilities:delivery']],static function(){
+            Route::post('update',[DeliveryController::class,'update']);
+            Route::post('change_password',[DeliveryController::class,'changePassword']);
+            Route::post('logout',[DeliveryController::class,'logout']);
+            Route::post('info',[DeliveryController::class,'info']);
+        });
     });
 
 });
